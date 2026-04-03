@@ -3,36 +3,39 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { images } from "@/constants/images";
 import { icons } from "@/constants/icons";
+import { hapticLight } from "@/utils/haptics";
 
-const TabIcon = ({ focused, icon, title }: any) => {
+/**
+ * Tab icon component with proper TypeScript interface.
+ * Shows highlighted background when focused.
+ */
+const TabIcon: React.FC<TabIconProps> = ({ focused, icon, title }) => {
     if (focused) {
         return (
-            <>
-                <ImageBackground
-                    source={images.highlight}
-                    className="flex flex-row w-full flex-1 min-w-[112px] min-h-16 mt-4 justify-center items-center rounded-full overflow-hidden"
-                >
-                    <Image
-                        source={icon}
-                        tintColor="#151312"
-                        className="size-5"
-                    />
-                    <Text className="text-secondary text-base font-semibold ml-2">
-                        {title}
-                    </Text>
-                </ImageBackground>
-            </>
-        );
-    } else {
-        return (
-            <View className="size-full justify-center items-center mt-4 rounded-full">
-                <Image source={icon} tintColor="#A8B5DB" className="size-5" />
-            </View>
+            <ImageBackground
+                source={images.highlight}
+                className="flex flex-row w-full flex-1 min-w-[112px] min-h-16 mt-4 justify-center items-center rounded-full overflow-hidden"
+            >
+                <Image
+                    source={icon}
+                    tintColor="#151312"
+                    className="size-5"
+                />
+                <Text className="text-secondary text-base font-semibold ml-2">
+                    {title}
+                </Text>
+            </ImageBackground>
         );
     }
+
+    return (
+        <View className="size-full justify-center items-center mt-4 rounded-full">
+            <Image source={icon} tintColor="#A8B5DB" className="size-5" />
+        </View>
+    );
 };
 
-const _layout = () => {
+const TabsLayout: React.FC = () => {
     return (
         <Tabs
             screenOptions={{
@@ -70,6 +73,9 @@ const _layout = () => {
                         />
                     ),
                 }}
+                listeners={{
+                    tabPress: () => hapticLight(),
+                }}
             />
             <Tabs.Screen
                 name="search"
@@ -84,6 +90,9 @@ const _layout = () => {
                             title="Search"
                         />
                     ),
+                }}
+                listeners={{
+                    tabPress: () => hapticLight(),
                 }}
             />
             <Tabs.Screen
@@ -100,6 +109,9 @@ const _layout = () => {
                         />
                     ),
                 }}
+                listeners={{
+                    tabPress: () => hapticLight(),
+                }}
             />
             <Tabs.Screen
                 name="profile"
@@ -115,9 +127,12 @@ const _layout = () => {
                         />
                     ),
                 }}
+                listeners={{
+                    tabPress: () => hapticLight(),
+                }}
             />
         </Tabs>
     );
 };
 
-export default _layout;
+export default TabsLayout;

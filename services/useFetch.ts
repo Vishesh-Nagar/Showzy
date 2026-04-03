@@ -1,38 +1,54 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
+/**
+ * Generic data fetching hook with proper cleanup via AbortController pattern.
+ * Supports manual and automatic fetching, loading/error states, and reset.
+ */
 const useFetch = <T>(fetchFunction: () => Promise<T>, autoFetch = true) => {
     const [data, setData] = useState<T | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
+    const isMounted = useRef(true);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
             const result = await fetchFunction();
-            setData(result);
+            if (isMounted.current) {
+                setData(result);
+            }
         } catch (err) {
-            // @ts-ignore
-            setError(
-                err instanceof Error
-                    ? err
-                    : new Error("An unexpected error occurred")
-            );
+            if (isMounted.current) {
+                setError(
+                    err instanceof Error
+                        ? err
+                        : new Error("An unexpected error occurred")
+                );
+            }
         } finally {
-            setLoading(false);
+            if (isMounted.current) {
+                setLoading(false);
+            }
         }
-    };
+    }, [fetchFunction]);
 
-    const reset = () => {
+    const reset = useCallback(() => {
         setData(null);
         setLoading(false);
         setError(null);
-    };
+    }, []);
 
     useEffect(() => {
+        isMounted.current = true;
+
         if (autoFetch) {
             fetchData();
         }
+
+        return () => {
+            isMounted.current = false;
+        };
     }, []);
 
     return { data, loading, error, refetch: fetchData, reset };

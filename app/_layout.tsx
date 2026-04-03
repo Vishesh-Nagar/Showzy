@@ -1,10 +1,22 @@
 import { Stack } from "expo-router";
 import "./globals.css";
 import { StatusBar } from "react-native";
+import { Provider as JotaiProvider } from "jotai";
+import { useEffect } from "react";
+import { clearExpiredCache } from "@/utils/storage";
 
+/**
+ * Root layout with Jotai Provider wrapping the entire app.
+ * Clears expired cache on app startup for storage hygiene.
+ */
 export default function RootLayout() {
+    useEffect(() => {
+        // Clean up expired cache entries on app start
+        clearExpiredCache();
+    }, []);
+
     return (
-        <>
+        <JotaiProvider>
             <StatusBar hidden={true} />
             <Stack
                 screenOptions={{
@@ -28,6 +40,6 @@ export default function RootLayout() {
                     }}
                 />
             </Stack>
-        </>
+        </JotaiProvider>
     );
 }

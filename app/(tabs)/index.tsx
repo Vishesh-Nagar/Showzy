@@ -1,7 +1,6 @@
 import { icons } from "@/constants/icons";
 import { images } from "@/constants/images";
 import {
-    ActivityIndicator,
     FlatList,
     Image,
     ScrollView,
@@ -15,6 +14,8 @@ import { fetchMovies } from "@/services/api";
 import MovieCard from "@/components/MovieCard";
 import { getTrendingMovies } from "@/services/appwrite";
 import TrendingCard from "@/components/TrendingCard";
+import { HomeScreenSkeleton } from "@/components/SkeletonLoader";
+import React, { useCallback } from "react";
 
 export default function Index() {
     const router = useRouter();
@@ -30,6 +31,31 @@ export default function Index() {
         error: moviesError,
     } = useFetch(() => fetchMovies({ query: "" }));
 
+    /** Memoized render functions to avoid re-creating on each render */
+    const renderMovieCard = useCallback(
+        ({ item, index }: { item: Movie; index: number }) => (
+            <MovieCard {...item} index={index} />
+        ),
+        []
+    );
+
+    const renderTrendingCard = useCallback(
+        ({ item, index }: { item: TrendingMovie; index: number }) => (
+            <TrendingCard movie={item} index={index} />
+        ),
+        []
+    );
+
+    const movieKeyExtractor = useCallback(
+        (item: Movie) => item.id.toString(),
+        []
+    );
+
+    const trendingKeyExtractor = useCallback(
+        (item: TrendingMovie) => item.movie_id.toString(),
+        []
+    );
+
     return (
         <View className="flex-1 bg-primary">
             <Image source={images.bg} className="absolute w-full z-0" />
@@ -41,13 +67,9 @@ export default function Index() {
                 <Image
                     source={icons.logo}
                     className="w-12 h-10 mt-20 mb-5 mx-auto"
-                ></Image>
+                />
                 {moviesLoading || trendingLoading ? (
-                    <ActivityIndicator
-                        size="large"
-                        color="#fff"
-                        className="mt-10 self-center"
-                    />
+                    <HomeScreenSkeleton />
                 ) : moviesError || trendingError ? (
                     <Text className="text-white text-center mt-10">
                         {moviesError?.message || trendingError?.message}
@@ -70,18 +92,9 @@ export default function Index() {
                                         <View className="w-4" />
                                     )}
                                     data={trendingMovies}
-                                    renderItem={({ item, index }) => (
-                                        <Text className="text-white text-sm">
-                                            <TrendingCard
-                                                movie={item}
-                                                index={index}
-                                            />
-                                        </Text>
-                                    )}
+                                    renderItem={renderTrendingCard}
                                     className="mb-4 mt-3"
-                                    keyExtractor={(item) =>
-                                        item.movie_id.toString()
-                                    }
+                                    keyExtractor={trendingKeyExtractor}
                                 />
                             </View>
                         )}
@@ -91,11 +104,9 @@ export default function Index() {
                             </Text>
                             <FlatList
                                 data={movies}
-                                renderItem={({ item }) => (
-                                    <MovieCard {...item} />
-                                )}
+                                renderItem={renderMovieCard}
                                 showsVerticalScrollIndicator={false}
-                                keyExtractor={(item) => item.id.toString()}
+                                keyExtractor={movieKeyExtractor}
                                 numColumns={3}
                                 columnWrapperStyle={{
                                     justifyContent: "flex-start",
