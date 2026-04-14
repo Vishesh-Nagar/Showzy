@@ -6,30 +6,79 @@ import {
     ScrollView,
     Text,
     View,
+    RefreshControl,
 } from "react-native";
-import SearchBar from "@/components/SearchBar";
-import { useRouter } from "expo-router";
 import useFetch from "@/services/useFetch";
 import { fetchMovies } from "@/services/api";
 import MovieCard from "@/components/MovieCard";
 import { getTrendingMovies } from "@/services/appwrite";
 import TrendingCard from "@/components/TrendingCard";
 import { HomeScreenSkeleton } from "@/components/SkeletonLoader";
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import { useIsFocused } from "@react-navigation/native";
+
+const AnimatedLogo = () => {
+    const isFocused = useIsFocused();
+    const textTranslateY = useSharedValue(-20);
+    const textOpacity = useSharedValue(0);
+
+    useEffect(() => {
+        if (isFocused) {
+            textTranslateY.value = withSpring(0, { damping: 15, stiffness: 150 });
+            textOpacity.value = withTiming(1, { duration: 300 });
+        } else {
+            textTranslateY.value = withTiming(-20, { duration: 200 });
+            textOpacity.value = withTiming(0, { duration: 200 });
+        }
+    }, [isFocused]);
+
+    const animatedTextStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: textTranslateY.value }],
+        opacity: textOpacity.value,
+    }));
+
+    return (
+        <View className="items-center mt-20 mb-5 relative z-10">
+            <View className="z-10  px-2">
+                <Image
+                    source={icons.logo}
+                    className="w-12 h-10"
+                    resizeMode="contain"
+                />
+            </View>
+            <Animated.Text 
+                className="text-white text-3xl font-black uppercase tracking-widest absolute top-14" 
+                style={animatedTextStyle}
+            >
+                Showzy
+            </Animated.Text>
+        </View>
+    );
+};
 
 export default function Index() {
-    const router = useRouter();
     const {
         data: trendingMovies,
         loading: trendingLoading,
         error: trendingError,
+        refetch: refetchTrending,
     } = useFetch(getTrendingMovies);
 
     const {
         data: movies,
         loading: moviesLoading,
         error: moviesError,
+        refetch: refetchMovies,
     } = useFetch(() => fetchMovies({ query: "" }));
+
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([refetchTrending(), refetchMovies()]);
+        setRefreshing(false);
+    }, [refetchTrending, refetchMovies]);
 
     /** Memoized render functions to avoid re-creating on each render */
     const renderMovieCard = useCallback(
@@ -47,12 +96,12 @@ export default function Index() {
     );
 
     const movieKeyExtractor = useCallback(
-        (item: Movie) => item.id.toString(),
+        (item: Movie, index: number) => `${item.id}-${index}`,
         []
     );
 
     const trendingKeyExtractor = useCallback(
-        (item: TrendingMovie) => item.movie_id.toString(),
+        (item: TrendingMovie, index: number) => `${item.movie_id}-${index}`,
         []
     );
 
@@ -63,11 +112,16 @@ export default function Index() {
                 className="flex-1 px-5"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ minHeight: "100%", paddingBottom: 10 }}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#fff"
+                        titleColor="#fff"
+                    />
+                }
             >
-                <Image
-                    source={icons.logo}
-                    className="w-12 h-10 mt-20 mb-5 mx-auto"
-                />
+                <AnimatedLogo />
                 {moviesLoading || trendingLoading ? (
                     <HomeScreenSkeleton />
                 ) : moviesError || trendingError ? (
@@ -76,11 +130,7 @@ export default function Index() {
                     </Text>
                 ) : (
                     <View className="flex-1 mt-5">
-                        <SearchBar
-                            onPress={() => router.push("/search")}
-                            placeholder="Search for a movie"
-                        />
-                        {trendingMovies && (
+                        {trendingMovies && trendingMovies.length > 0 && (
                             <View className="mt-10">
                                 <Text className="text-white text-lg font-bold mb-3">
                                     Trending Movies
@@ -93,7 +143,8 @@ export default function Index() {
                                     )}
                                     data={trendingMovies}
                                     renderItem={renderTrendingCard}
-                                    className="mb-4 mt-3"
+                                    className="mb-4 mt-3 -mx-5"
+                                    contentContainerStyle={{ paddingHorizontal: 20 }}
                                     keyExtractor={trendingKeyExtractor}
                                 />
                             </View>

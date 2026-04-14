@@ -8,19 +8,33 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  * combined with offline-first persistence via AsyncStorage.
  */
 
-// --- AsyncStorage adapter for Jotai ---
-const asyncStorageAdapter = createJSONStorage<any>(() => ({
-    getItem: async (key: string) => {
+// --- Persistence Helper Functions ---
+
+/** 
+ * Safely writes data to AsyncStorage. 
+ * Handles JSON stringification and basic error logging.
+ */
+const persistToStorage = async (key: string, value: any) => {
+    try {
+        await AsyncStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.warn(`[Storage] Failed to save ${key}:`, error);
+    }
+};
+
+/** 
+ * Safely reads and parses data from AsyncStorage.
+ * Returns the provided initial value on failure or if data is missing.
+ */
+const hydrateFromStorage = async (key: string, initialValue: any) => {
+    try {
         const value = await AsyncStorage.getItem(key);
-        return value;
-    },
-    setItem: async (key: string, value: string) => {
-        await AsyncStorage.setItem(key, value);
-    },
-    removeItem: async (key: string) => {
-        await AsyncStorage.removeItem(key);
-    },
-}));
+        return value ? JSON.parse(value) : initialValue;
+    } catch (error) {
+        console.warn(`[Storage] Failed to load ${key}:`, error);
+        return initialValue;
+    }
+};
 
 // --- Saved Movies ---
 export interface SavedMovie {
@@ -32,30 +46,26 @@ export interface SavedMovie {
     savedAt: number; // timestamp
 }
 
-/** Persisted atom for bookmarked/saved movies. Survives app restarts. */
-const savedMoviesBaseAtom = atomWithStorage<SavedMovie[]>(
-    "showzy_saved_movies",
-    [],
-    asyncStorageAdapter as any,
-);
+const STORAGE_KEY_SAVED_MOVIES = "showzy_saved_movies";
+const baseSavedMoviesAtom = atom<SavedMovie[]>([]);
 
-/** Unwrapped atom that always resolves to SavedMovie[] */
+/** 
+ * Central atom for saved movies.
+ * Persists to AsyncStorage on every change and hydrates on first mount.
+ */
 export const savedMoviesAtom = atom(
-    (get) => {
-        const val = get(savedMoviesBaseAtom);
-        if (val instanceof Promise) return [] as SavedMovie[];
-        return val;
-    },
-    (_get, set, update: SavedMovie[] | ((prev: SavedMovie[]) => SavedMovie[])) => {
-        if (typeof update === "function") {
-            const current = _get(savedMoviesBaseAtom);
-            const resolved = current instanceof Promise ? [] : current;
-            set(savedMoviesBaseAtom, update(resolved));
-        } else {
-            set(savedMoviesBaseAtom, update);
-        }
+    (get) => get(baseSavedMoviesAtom),
+    (get, set, update: SavedMovie[] | ((prev: SavedMovie[]) => SavedMovie[])) => {
+        const nextValue = typeof update === "function" ? update(get(baseSavedMoviesAtom)) : update;
+        set(baseSavedMoviesAtom, nextValue);
+        persistToStorage(STORAGE_KEY_SAVED_MOVIES, nextValue);
     }
 );
+
+// Subscribe to storage load on mount
+savedMoviesAtom.onMount = (setAtom) => {
+    hydrateFromStorage(STORAGE_KEY_SAVED_MOVIES, []).then(setAtom);
+};
 
 // --- Search History ---
 export interface SearchHistoryItem {
@@ -63,30 +73,25 @@ export interface SearchHistoryItem {
     timestamp: number;
 }
 
-/** Persisted atom for recent search history (max 10 items). */
-const searchHistoryBaseAtom = atomWithStorage<SearchHistoryItem[]>(
-    "showzy_search_history",
-    [],
-    asyncStorageAdapter as any,
-);
+const STORAGE_KEY_SEARCH_HISTORY = "showzy_search_history";
+const baseSearchHistoryAtom = atom<SearchHistoryItem[]>([]);
 
-/** Unwrapped atom that always resolves to SearchHistoryItem[] */
+/** 
+ * Central atom for search history.
+ * Limits history to 10 items and persists synchronously to disk.
+ */
 export const searchHistoryAtom = atom(
-    (get) => {
-        const val = get(searchHistoryBaseAtom);
-        if (val instanceof Promise) return [] as SearchHistoryItem[];
-        return val;
-    },
-    (_get, set, update: SearchHistoryItem[] | ((prev: SearchHistoryItem[]) => SearchHistoryItem[])) => {
-        if (typeof update === "function") {
-            const current = _get(searchHistoryBaseAtom);
-            const resolved = current instanceof Promise ? [] : current;
-            set(searchHistoryBaseAtom, update(resolved));
-        } else {
-            set(searchHistoryBaseAtom, update);
-        }
+    (get) => get(baseSearchHistoryAtom),
+    (get, set, update: SearchHistoryItem[] | ((prev: SearchHistoryItem[]) => SearchHistoryItem[])) => {
+        const nextValue = typeof update === "function" ? update(get(baseSearchHistoryAtom)) : update;
+        set(baseSearchHistoryAtom, nextValue);
+        persistToStorage(STORAGE_KEY_SEARCH_HISTORY, nextValue);
     }
 );
+
+searchHistoryAtom.onMount = (setAtom) => {
+    hydrateFromStorage(STORAGE_KEY_SEARCH_HISTORY, []).then(setAtom);
+};
 
 // --- App Preferences ---
 export interface AppPreferences {
@@ -94,35 +99,30 @@ export interface AppPreferences {
     preferredGenres: number[];
 }
 
+const STORAGE_KEY_PREFERENCES = "showzy_preferences";
 const defaultPreferences: AppPreferences = {
     adultContentFilter: true,
     preferredGenres: [],
 };
 
-/** Persisted atom for user preferences. */
-const appPreferencesBaseAtom = atomWithStorage<AppPreferences>(
-    "showzy_preferences",
-    defaultPreferences,
-    asyncStorageAdapter as any,
-);
+const baseAppPreferencesAtom = atom<AppPreferences>(defaultPreferences);
 
-/** Unwrapped atom that always resolves to AppPreferences */
+/** 
+ * Central atom for user preferences.
+ * Ensures consistent state across app restarts via manual AsyncStorage sync.
+ */
 export const appPreferencesAtom = atom(
-    (get) => {
-        const val = get(appPreferencesBaseAtom);
-        if (val instanceof Promise) return defaultPreferences;
-        return val;
-    },
-    (_get, set, update: AppPreferences | ((prev: AppPreferences) => AppPreferences)) => {
-        if (typeof update === "function") {
-            const current = _get(appPreferencesBaseAtom);
-            const resolved = current instanceof Promise ? defaultPreferences : current;
-            set(appPreferencesBaseAtom, update(resolved));
-        } else {
-            set(appPreferencesBaseAtom, update);
-        }
+    (get) => get(baseAppPreferencesAtom),
+    (get, set, update: AppPreferences | ((prev: AppPreferences) => AppPreferences)) => {
+        const nextValue = typeof update === "function" ? update(get(baseAppPreferencesAtom)) : update;
+        set(baseAppPreferencesAtom, nextValue);
+        persistToStorage(STORAGE_KEY_PREFERENCES, nextValue);
     }
 );
+
+appPreferencesAtom.onMount = (setAtom) => {
+    hydrateFromStorage(STORAGE_KEY_PREFERENCES, defaultPreferences).then(setAtom);
+};
 
 // --- Derived / Computed Atoms ---
 
@@ -133,3 +133,7 @@ export const savedMoviesCountAtom = atom((get) => get(savedMoviesAtom).length);
 export const searchHistoryCountAtom = atom(
     (get) => get(searchHistoryAtom).length
 );
+
+// --- API Monitoring ---
+/** Global counter for all network requests. Updated from services. */
+export const apiCallCountAtom = atom(0);

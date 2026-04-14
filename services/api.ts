@@ -1,11 +1,14 @@
+import { getDefaultStore } from "jotai";
+import { apiCallCountAtom } from "@/store/atoms";
 import { cacheData, getCachedData } from "@/utils/storage";
+
+const store = getDefaultStore();
 
 export const TMDB_CONFIG = {
     BASE_URL: "https://api.themoviedb.org/3",
     API_KEY: process.env.EXPO_PUBLIC_MOVIE_API_KEY,
     headers: {
         accept: "application/json",
-        Authorization: `Bearer ${process.env.EXPO_PUBLIC_MOVIE_API_KEY}`,
     },
 };
 
@@ -22,6 +25,9 @@ export const fetchMovies = async ({
 }): Promise<Movie[]> => {
     const cacheKey = `movies_${query || "discover"}`;
 
+    // Track API call
+    store.set(apiCallCountAtom, (prev) => prev + 1);
+
     // Step 1: Check cache first (offline-first)
     const cached = await getCachedData<Movie[]>(cacheKey);
     if (cached) {
@@ -32,8 +38,8 @@ export const fetchMovies = async ({
     const endpoint = query
         ? `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(
               query
-          )}`
-        : `${TMDB_CONFIG.BASE_URL}/discover/movie?sort_by=popularity.desc`;
+          )}&api_key=${TMDB_CONFIG.API_KEY}`
+        : `${TMDB_CONFIG.BASE_URL}/discover/movie?sort_by=popularity.desc&api_key=${TMDB_CONFIG.API_KEY}`;
 
     try {
         const res = await fetch(endpoint, {
@@ -73,6 +79,9 @@ export const fetchMovieDetails = async (
     movieId: string
 ): Promise<MovieDetails> => {
     const cacheKey = `movie_details_${movieId}`;
+
+    // Track API call
+    store.set(apiCallCountAtom, (prev) => prev + 1);
 
     // Check cache first
     const cached = await getCachedData<MovieDetails>(cacheKey);

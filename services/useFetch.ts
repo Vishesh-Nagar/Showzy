@@ -9,12 +9,18 @@ const useFetch = <T>(fetchFunction: () => Promise<T>, autoFetch = true) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const isMounted = useRef(true);
+    const fetchFnRef = useRef(fetchFunction);
+
+    // Update the ref whenever the function changes, but don't re-create fetchData
+    useEffect(() => {
+        fetchFnRef.current = fetchFunction;
+    }, [fetchFunction]);
 
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
-            const result = await fetchFunction();
+            const result = await fetchFnRef.current();
             if (isMounted.current) {
                 setData(result);
             }
@@ -31,7 +37,7 @@ const useFetch = <T>(fetchFunction: () => Promise<T>, autoFetch = true) => {
                 setLoading(false);
             }
         }
-    }, [fetchFunction]);
+    }, []);
 
     const reset = useCallback(() => {
         setData(null);

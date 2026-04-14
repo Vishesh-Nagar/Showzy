@@ -1,15 +1,24 @@
+import 'react-native-url-polyfill/auto';
+import { getDefaultStore } from "jotai";
 import { Client, Databases, ID, Query } from "react-native-appwrite";
+import { apiCallCountAtom } from "@/store/atoms";
+
+const store = getDefaultStore();
 
 const DATABASE_ID = process.env.EXPO_PUBLIC_APPWRITE_DATABASE_ID ?? "";
 const COLLECTION_ID = process.env.EXPO_PUBLIC_APPWRITE_COLLECTION_ID ?? "";
 
 const client = new Client()
     .setEndpoint(process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!)
-    .setProject(process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!);
+    .setProject(process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!)
+    .setPlatform("com.showzy");
 
 const database = new Databases(client);
 
 export const updateSearchCount = async (query: string, movie: Movie) => {
+    // Track API call
+    store.set(apiCallCountAtom, (prev) => prev + 1);
+
     try {
         const result = await database.listDocuments(
             DATABASE_ID,
@@ -58,6 +67,9 @@ export const updateSearchCount = async (query: string, movie: Movie) => {
 export const getTrendingMovies = async (): Promise<
     TrendingMovie[] | undefined
 > => {
+    // Track API call
+    store.set(apiCallCountAtom, (prev) => prev + 1);
+
     try {
         const result = await database.listDocuments(
             DATABASE_ID,

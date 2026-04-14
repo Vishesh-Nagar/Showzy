@@ -4,6 +4,10 @@ import { StatusBar } from "react-native";
 import { Provider as JotaiProvider } from "jotai";
 import { useEffect } from "react";
 import { clearExpiredCache } from "@/utils/storage";
+import { configureGoogleSignIn } from "@/services/googleAuth";
+
+// Configure Google Sign-In (must be called before any sign-in attempt)
+configureGoogleSignIn();
 
 /**
  * Root layout with Jotai Provider wrapping the entire app.

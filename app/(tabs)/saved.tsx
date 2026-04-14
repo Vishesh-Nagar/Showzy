@@ -8,13 +8,13 @@ import {
     Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { Link } from "expo-router";
 import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 
 import { icons } from "@/constants/icons";
 import { images } from "@/constants/images";
-import { savedMoviesAtom, SavedMovie } from "@/store";
+import { savedMoviesAtom, SavedMovie, isAuthenticatedAtom } from "@/store";
 import { hapticMedium, hapticWarning } from "@/utils/haptics";
 
 /**
@@ -23,6 +23,7 @@ import { hapticMedium, hapticWarning } from "@/utils/haptics";
  * - Offline persistence via AsyncStorage
  * - Animated list items
  * - Long-press to remove
+ * - Auth guard: users can navigate here but only logged-in users can add movies
  */
 const SavedMovieCard: React.FC<{
     movie: SavedMovie;
@@ -68,6 +69,7 @@ const SavedMovieCard: React.FC<{
 
 const Saved: React.FC = () => {
     const [savedMovies, setSavedMovies] = useAtom(savedMoviesAtom);
+    const isAuthenticated = useAtomValue(isAuthenticatedAtom);
 
     const handleRemoveMovie = useCallback(
         (movieId: number) => {
@@ -129,6 +131,51 @@ const Saved: React.FC = () => {
         []
     );
 
+    /** Empty state content depends on auth status */
+    const renderEmptyState = () => {
+        if (!isAuthenticated) {
+            return (
+                <View className="flex justify-center items-center flex-1 flex-col gap-5 mt-20">
+                    <View className="w-16 h-16 rounded-full bg-dark-200 items-center justify-center border border-dark-100">
+                        <Image
+                            source={icons.person}
+                            className="size-8"
+                            tintColor="#A8B5DB"
+                        />
+                    </View>
+                    <Text className="text-white text-lg font-bold text-center">
+                        Sign in to Save Movies
+                    </Text>
+                    <Text className="text-light-300 text-sm text-center px-10">
+                        Sign in with Google on the Profile tab to start saving
+                        your favorite movies
+                    </Text>
+                    <View className="bg-dark-200 border border-dark-100 rounded-2xl px-6 py-3 mt-2">
+                        <Text className="text-accent text-sm font-medium">
+                            Go to Profile → Sign In
+                        </Text>
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <View className="flex justify-center items-center flex-1 flex-col gap-5 mt-20">
+                <Image
+                    source={icons.save}
+                    className="size-10"
+                    tintColor="#A8B5DB"
+                />
+                <Text className="text-light-300 text-base text-center">
+                    No saved movies yet
+                </Text>
+                <Text className="text-light-300 text-sm text-center px-10">
+                    Tap the ♥ button on any movie to save it for offline access
+                </Text>
+            </View>
+        );
+    };
+
     return (
         <View className="flex-1 bg-primary">
             <Image
@@ -149,9 +196,7 @@ const Saved: React.FC = () => {
                         paddingRight: 5,
                         marginBottom: 10,
                     }}
-                    contentContainerStyle={{
-                        paddingBottom: 100,
-                    }}
+                    contentContainerStyle={{ paddingBottom: 100 }}
                     ListHeaderComponent={
                         <View className="my-5">
                             <View className="flex-row justify-between items-center mb-5">
@@ -175,22 +220,7 @@ const Saved: React.FC = () => {
                             )}
                         </View>
                     }
-                    ListEmptyComponent={
-                        <View className="flex justify-center items-center flex-1 flex-col gap-5 mt-20">
-                            <Image
-                                source={icons.save}
-                                className="size-10"
-                                tintColor="#A8B5DB"
-                            />
-                            <Text className="text-light-300 text-base text-center">
-                                No saved movies yet
-                            </Text>
-                            <Text className="text-light-300 text-sm text-center px-10">
-                                Tap the ♥ button on any movie to save it for
-                                offline access
-                            </Text>
-                        </View>
-                    }
+                    ListEmptyComponent={renderEmptyState}
                 />
             </SafeAreaView>
         </View>

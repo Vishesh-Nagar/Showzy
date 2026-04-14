@@ -4,11 +4,13 @@ import {
     Image,
     ScrollView,
     TouchableOpacity,
+    Alert,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useMemo } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import Animated, {
     FadeInDown,
     FadeInUp,
@@ -18,8 +20,8 @@ import Animated, {
 import { icons } from "@/constants/icons";
 import useFetch from "@/services/useFetch";
 import { fetchMovieDetails } from "@/services/api";
-import { savedMoviesAtom, SavedMovie } from "@/store";
-import { hapticMedium, hapticSuccess } from "@/utils/haptics";
+import { savedMoviesAtom, SavedMovie, isAuthenticatedAtom } from "@/store";
+import { hapticMedium, hapticSuccess, hapticWarning } from "@/utils/haptics";
 import { HomeScreenSkeleton } from "@/components/SkeletonLoader";
 
 const MovieInfo = ({ label, value }: MovieInfoProps) => (
@@ -42,6 +44,7 @@ const Details: React.FC = () => {
     const router = useRouter();
     const { id } = useLocalSearchParams();
     const [savedMovies, setSavedMovies] = useAtom(savedMoviesAtom);
+    const isAuthenticated = useAtomValue(isAuthenticatedAtom);
 
     const { data: movie, loading } = useFetch(() =>
         fetchMovieDetails(id as string)
@@ -53,9 +56,21 @@ const Details: React.FC = () => {
         [savedMovies, id]
     );
 
-    /** Toggle save/unsave with haptic feedback */
+    /** Toggle save/unsave with haptic feedback — requires authentication */
     const toggleSave = useCallback(() => {
         if (!movie) return;
+
+        if (!isAuthenticated) {
+            hapticWarning();
+            Alert.alert(
+                "Sign In Required",
+                "You need to sign in to save movies to your favorites. Go to the Profile tab to sign in with Google.",
+                [
+                    { text: "OK", style: "default" },
+                ]
+            );
+            return;
+        }
 
         if (isSaved) {
             hapticMedium();
@@ -72,7 +87,7 @@ const Details: React.FC = () => {
             };
             setSavedMovies((prev) => [savedMovie, ...prev]);
         }
-    }, [movie, isSaved, setSavedMovies]);
+    }, [movie, isSaved, isAuthenticated, setSavedMovies]);
 
     if (loading)
         return (
@@ -93,23 +108,7 @@ const Details: React.FC = () => {
                         resizeMode="stretch"
                     />
 
-                    {/* Save Button */}
-                    <Animated.View
-                        entering={ZoomIn.delay(300).duration(400).springify()}
-                        className="absolute top-12 right-5"
-                    >
-                        <TouchableOpacity
-                            onPress={toggleSave}
-                            className={`rounded-full size-12 flex items-center justify-center ${
-                                isSaved ? "bg-accent" : "bg-black/50"
-                            }`}
-                            activeOpacity={0.7}
-                        >
-                            <Text className="text-2xl">
-                                {isSaved ? "♥" : "♡"}
-                            </Text>
-                        </TouchableOpacity>
-                    </Animated.View>
+
 
                     {/* Play Button */}
                     <TouchableOpacity className="absolute bottom-5 right-5 rounded-full size-14 bg-white flex items-center justify-center">
@@ -210,7 +209,11 @@ const Details: React.FC = () => {
                     }`}
                     activeOpacity={0.7}
                 >
-                    <Text className="text-xl">{isSaved ? "♥" : "♡"}</Text>
+                    <Ionicons
+                        name="heart"
+                        size={24}
+                        color={isSaved ? "#EF4444" : "white"}
+                    />
                 </TouchableOpacity>
             </Animated.View>
         </View>

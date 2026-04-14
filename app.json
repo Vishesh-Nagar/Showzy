@@ -1,11 +1,12 @@
 {
   "expo": {
     "name": "Showzy",
-    "slug": "Showzy",
+    "slug": "showzy",
+    "owner": "nagarvishesh16",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
-    "scheme": "Showzy",
+    "scheme": "showzy",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -16,7 +17,8 @@
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.showzy"
     },
     "web": {
       "bundler": "metro",
@@ -34,10 +36,17 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-font"
+      "expo-font",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6c37407d-9ef3-4c98-9a52-010c194231cb"
+      }
     }
   }
 }

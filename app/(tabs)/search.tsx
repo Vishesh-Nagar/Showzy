@@ -83,7 +83,7 @@ const Search: React.FC = () => {
     );
 
     const movieKeyExtractor = useCallback(
-        (item: Movie) => item.id.toString(),
+        (item: Movie, index: number) => `${item.id}-${index}`,
         []
     );
 
@@ -107,6 +107,7 @@ const Search: React.FC = () => {
                 }}
                 contentContainerStyle={{
                     paddingBottom: 100,
+                    flexGrow: 1,
                 }}
                 ListHeaderComponent={
                     <>
@@ -119,7 +120,7 @@ const Search: React.FC = () => {
                         </View>
                         <View className="my-5">
                             <SearchBar
-                                placeholder="Search"
+                                placeholder="Search movies..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                             />
@@ -154,12 +155,30 @@ const Search: React.FC = () => {
                     </>
                 }
                 ListEmptyComponent={
-                    !loading && !error && searchQuery.trim() ? (
-                        <View className="mt-10 px-5">
-                            <Text className="text-gray-500 text-center px-5 my-3">
-                                No results found for &quot;{searchQuery}&quot;
-                            </Text>
-                        </View>
+                    !loading && !error ? (
+                        !searchQuery.trim() ? (
+                            <View className="flex-1 justify-center items-center px-10">
+                                <Image
+                                    source={icons.search}
+                                    className="w-16 h-16 mb-5 opacity-20"
+                                    tintColor="#ab8bff"
+                                    resizeMode="contain"
+                                />
+                                <Text className="text-white text-lg font-bold text-center">
+                                    Your Favorite Movies are Waiting
+                                </Text>
+                                <Text className="text-light-200 text-sm text-center mt-2 italic px-5">
+                                    Search for movies, actors, or genres to
+                                    start your cinematic journey
+                                </Text>
+                            </View>
+                        ) : (
+                            <View className="mt-10 px-5">
+                                <Text className="text-gray-500 text-center px-5 my-3">
+                                    No results found for &quot;{searchQuery}&quot;
+                                </Text>
+                            </View>
+                        )
                     ) : null
                 }
             />
